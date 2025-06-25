@@ -18,17 +18,13 @@ https://arxiv.org/abs/1804.03999
 
 
 ## U-Net
-![U-Net](/img/U-Net.png)
 
 
 ## R2U-Net
-![R2U-Net](/img/R2U-Net.png)
 
 ## Attention U-Net
-![AttU-Net](/img/AttU-Net.png)
 
 ## Attention R2U-Net
-![AttR2U-Net](/img/AttR2U-Net.png)
 
 ## Evaluation
 we just test the models with [ISIC 2018 dataset](https://challenge2018.isic-archive.com/task1/training/). The dataset was split into three subsets, training set, validation set, and test set, which the proportion is 70%, 10% and 20% of the whole dataset, respectively. The entire dataset contains 2594 images where 1815 images were used
