@@ -57,7 +57,7 @@ class Solver(object):
             self.device = torch.device("cpu")
             print("Using CPU")
 
-        self.model.to(self.device)
+        self.build_model()
 
     def build_model(self):
         """Create a model and its optimizer."""
