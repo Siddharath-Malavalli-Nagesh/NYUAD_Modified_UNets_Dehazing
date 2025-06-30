@@ -6,6 +6,13 @@ from torch.backends import cudnn
 import random
 
 def main(config):
+    if config.train_path is None:
+        config.train_path = os.path.join(config.dataset_base_path, 'train/')
+    if config.valid_path is None:
+        config.valid_path = os.path.join(config.dataset_base_path, 'valid/')
+    if config.test_path is None:
+        config.test_path = os.path.join(config.dataset_base_path, 'test/')
+
     cudnn.benchmark = True
     if config.model_type not in ['U_Net','R2U_Net','AttU_Net','R2AttU_Net']:
         print('ERROR!! model_type should be selected in U_Net/R2U_Net/AttU_Net/R2AttU_Net')
@@ -91,13 +98,19 @@ if __name__ == '__main__':
     # misc
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
     parser.add_argument('--model_type', type=str, default='U_Net', help='U_Net/R2U_Net/AttU_Net/R2AttU_Net')
+    # --- THIS IS THE NEW BLOCK TO ADD ---
     parser.add_argument('--model_path', type=str, default='./models')
-    parser.add_argument('--train_path', type=str, default='./dataset/train/')
-    parser.add_argument('--valid_path', type=str, default='./dataset/valid/')
-    parser.add_argument('--test_path', type=str, default='./dataset/test/')
     parser.add_argument('--result_path', type=str, default='./result/')
+    parser.add_argument('--cuda_idx', type=int, default=0)
 
-    parser.add_argument('--cuda_idx', type=int, default=0) # Use GPU 0
+# New argument for the base dataset directory
+    parser.add_argument('--dataset_base_path', type=str, default='./dataset/', help='Base directory of the dataset containing train, valid, and test subfolders.')
+
+# Optional arguments for specific paths (these will override the base path if used)
+    parser.add_argument('--train_path', type=str, default=None, help='Path to training images. Overrides --dataset_base_path.')
+    parser.add_argument('--valid_path', type=str, default=None, help='Path to validation images. Overrides --dataset_base_path.')
+    parser.add_argument('--test_path', type=str, default=None, help='Path to testing images. Overrides --dataset_base_path.')
+
 
     config = parser.parse_args()
     
