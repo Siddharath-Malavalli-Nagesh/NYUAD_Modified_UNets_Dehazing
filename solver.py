@@ -57,9 +57,9 @@ class Solver(object):
             self.device = torch.device("cpu")
             print("Using CPU")
 
-        self.build_model()
+        self.build_model(config)
 
-    def build_model(self):
+    def build_model(self, config):
         """Create a model and its optimizer."""
         if self.model_type == 'U_Net':
             self.model = U_Net(img_ch=self.img_ch, output_ch=self.output_ch)
@@ -69,9 +69,17 @@ class Solver(object):
             self.model = AttU_Net(img_ch=self.img_ch, output_ch=self.output_ch)
         elif self.model_type == 'R2AttU_Net':
             self.model = R2AttU_Net(img_ch=self.img_ch, output_ch=self.output_ch, t=self.t)
-        
-        self.optimizer = Adam(list(self.model.parameters()), self.lr, [self.beta1, self.beta2])
+
+        # --- ADD THIS MULTI-GPU LOGIC ---
+        if torch.cuda.device_count() > 1:
+            print(f"Using {torch.cuda.device_count()} GPUs!")
+        # Use the GPU IDs specified by the user, or all available GPUs if None.
+            self.model = nn.DataParallel(self.model, device_ids=config.gpu_ids)
+    
+    # Move the model (or the wrapped model) to the primary device
         self.model.to(self.device)
+    # --- END OF NEW LOGIC ---   
+        self.optimizer = Adam(list(self.model.parameters()), self.lr, [self.beta1, self.beta2])
 
     def train(self):
         """Train the model."""
@@ -117,7 +125,11 @@ class Solver(object):
                 if val_ssim > best_ssim:
                     best_ssim = val_ssim
                     best_model_path = os.path.join(self.model_path, f'{self.model_type}-best_model.pth')
-                    torch.save(self.model.state_dict(), best_model_path)
+                    # torch.save(self.model.state_dict(), best_model_path)
+                    if isinstance(self.model, nn.DataParallel):
+                        torch.save(self.model.module.state_dict(), best_model_path)
+                    else:
+                        torch.save(self.model.state_dict(), best_model_path)
                     print(f'>>> Model saved to {best_model_path} (SSIM: {best_ssim:.4f})')
                 print('-----------------------------------------')
 
