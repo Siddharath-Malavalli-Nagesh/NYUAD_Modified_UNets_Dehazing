@@ -110,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_path', type=str, default=None, help='Path to training images. Overrides --dataset_base_path.')
     parser.add_argument('--valid_path', type=str, default=None, help='Path to validation images. Overrides --dataset_base_path.')
     parser.add_argument('--test_path', type=str, default=None, help='Path to testing images. Overrides --dataset_base_path.')
-
+    parser.add_argument('--gpu_ids', type=int, nargs='+', default=None, help='List of GPU indices to use (e.g., 0 1 2). Uses all available if not specified.')
 
     config = parser.parse_args()
     
