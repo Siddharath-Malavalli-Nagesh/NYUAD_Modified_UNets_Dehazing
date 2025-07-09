@@ -69,6 +69,8 @@ class Solver(object):
             self.model = AttU_Net(img_ch=self.img_ch, output_ch=self.output_ch)
         elif self.model_type == 'R2AttU_Net':
             self.model = R2AttU_Net(img_ch=self.img_ch, output_ch=self.output_ch, t=self.t)
+        elif self.model_type == 'DCTU_Net':
+            self.model = DCT_UNet(img_ch=self.img_ch, output_ch=self.output_ch)
 
         # --- ADD THIS MULTI-GPU LOGIC ---
         if torch.cuda.device_count() > 1:
