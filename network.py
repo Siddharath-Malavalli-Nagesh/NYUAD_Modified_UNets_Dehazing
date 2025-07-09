@@ -10,13 +10,11 @@ import torch.fft
 class DCTBlock(nn.Module):
     def __init__(self, channels):
         super(DCTBlock, self).__init__()
-        self.scale = nn.Parameter(torch.ones(1, channels, 1, 1))  # Learnable channel-wise scaling
+        self.scale = nn.Parameter(torch.ones(1, channels, 1, 1))
 
     def forward(self, x):
-        # Apply DCT (approximate with FFT for simplicity)
         x_freq = torch.fft.fft2(x, norm='ortho')
-        x_freq = torch.real(x_freq) * self.scale  # Channel-wise weighting in frequency domain
-        # Inverse DCT (approximate with IFFT)
+        x_freq = torch.real(x_freq) * self.scale
         x_time = torch.fft.ifft2(x_freq, norm='ortho')
         x_time = torch.real(x_time)
         return x_time
@@ -54,14 +52,13 @@ class conv_block(nn.Module):
     def __init__(self, ch_in, ch_out):
         super(conv_block, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.Conv2d(ch_in, ch_out, 3, 1, 1, bias=True),
             nn.BatchNorm2d(ch_out),
             nn.ReLU(inplace=True),
-            nn.Conv2d(ch_out, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.Conv2d(ch_out, ch_out, 3, 1, 1, bias=True),
             nn.BatchNorm2d(ch_out),
             nn.ReLU(inplace=True)
         )
-
     def forward(self, x):
         return self.conv(x)
 
@@ -70,11 +67,10 @@ class up_conv(nn.Module):
         super(up_conv, self).__init__()
         self.up = nn.Sequential(
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.Conv2d(ch_in, ch_out, 3, 1, 1, bias=True),
             nn.BatchNorm2d(ch_out),
             nn.ReLU(inplace=True)
         )
-
     def forward(self, x):
         return self.up(x)
 
@@ -351,10 +347,13 @@ class R2AttU_Net(nn.Module):
 # ---------------------------
 # DCT U-Net (Hybrid)
 # ---------------------------
+
 class DCT_UNet(nn.Module):
     def __init__(self, img_ch=3, output_ch=1):
         super().__init__()
-        self.Maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.Maxpool = nn.MaxPool2d(2, 2)
+
+        # Encoder
         self.Conv1 = conv_block(img_ch, 64)
         self.Conv2 = conv_block(64, 128)
         self.DCT2 = DCTBlock(128)
@@ -363,40 +362,44 @@ class DCT_UNet(nn.Module):
         self.DCT4 = DCTBlock(512)
         self.Conv5 = conv_block(512, 1024)
 
+        # Decoder
         self.Up5 = up_conv(1024, 512)
         self.Up_conv5 = conv_block(1024, 512)
         self.Up4 = up_conv(512, 256)
         self.Up_conv4 = conv_block(512, 256)
         self.Up3 = up_conv(256, 128)
-        self.Up_conv3 = conv_block(256 + 128, 128)  # Receives DCT skip
+        # Note: Up_conv3 expects 256 channels because we concatenate d3 (128) and x2_dct (128)
+        self.Up_conv3 = conv_block(256, 128)
         self.Up2 = up_conv(128, 64)
         self.Up_conv2 = conv_block(128, 64)
-        self.Conv_1x1 = nn.Conv2d(64, output_ch, kernel_size=1, stride=1, padding=0)
+        self.Conv_1x1 = nn.Conv2d(64, output_ch, 1, 1, 0)
 
     def forward(self, x):
-        x1 = self.Conv1(x)
+        # Encoder
+        x1 = self.Conv1(x)                         # 64
         x2 = self.Maxpool(x1)
-        x2 = self.Conv2(x2)
+        x2 = self.Conv2(x2)                        # 128
         x2_dct = self.DCT2(x2)
         x3 = self.Maxpool(x2_dct)
-        x3 = self.Conv3(x3)
+        x3 = self.Conv3(x3)                        # 256
         x4 = self.Maxpool(x3)
-        x4 = self.Conv4(x4)
+        x4 = self.Conv4(x4)                        # 512
         x4_dct = self.DCT4(x4)
         x5 = self.Maxpool(x4_dct)
-        x5 = self.Conv5(x5)
+        x5 = self.Conv5(x5)                        # 1024
 
+        # Decoder
         d5 = self.Up5(x5)
-        d5 = torch.cat((x4_dct, d5), dim=1)
+        d5 = torch.cat((x4_dct, d5), dim=1)        # 512 + 512 = 1024
         d5 = self.Up_conv5(d5)
         d4 = self.Up4(d5)
-        d4 = torch.cat((x3, d4), dim=1)
+        d4 = torch.cat((x3, d4), dim=1)            # 256 + 256 = 512
         d4 = self.Up_conv4(d4)
         d3 = self.Up3(d4)
-        d3 = torch.cat((x2_dct, d3), dim=1)
+        d3 = torch.cat((x2_dct, d3), dim=1)        # 128 + 128 = 256
         d3 = self.Up_conv3(d3)
         d2 = self.Up2(d3)
-        d2 = torch.cat((x1, d2), dim=1)
+        d2 = torch.cat((x1, d2), dim=1)            # 64 + 64 = 128
         d2 = self.Up_conv2(d2)
         d1 = self.Conv_1x1(d2)
         return torch.sigmoid(d1)
