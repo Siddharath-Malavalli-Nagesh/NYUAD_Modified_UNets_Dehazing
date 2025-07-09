@@ -351,7 +351,7 @@ class R2AttU_Net(nn.Module):
 # ---------------------------
 # DCT U-Net (Hybrid)
 # ---------------------------
-class HybridDCT_UNet(nn.Module):
+class DCT_UNet(nn.Module):
     def __init__(self, img_ch=3, output_ch=1):
         super().__init__()
         self.Maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
