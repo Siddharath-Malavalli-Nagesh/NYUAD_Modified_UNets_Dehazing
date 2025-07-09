@@ -8,7 +8,7 @@ from torch.optim import Adam
 from torchvision.utils import save_image
 
 # Import your models and evaluation metrics
-from network import U_Net, R2U_Net, AttU_Net, R2AttU_Net
+from network import U_Net, R2U_Net, AttU_Net, R2AttU_Net, DCT_UNet
 from evaluation import get_ssim, get_psnr
 
 class Solver(object):
