@@ -351,74 +351,53 @@ class R2AttU_Net(nn.Module):
 # ---------------------------
 # DCT U-Net (Hybrid)
 # ---------------------------
-class DCT_UNet(nn.Module):
+class HybridDCT_UNet(nn.Module):
     def __init__(self, img_ch=3, output_ch=1):
-        super(DCT_UNet, self).__init__()
+        super().__init__()
         self.Maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        self.Conv1 = conv_block(ch_in=img_ch, ch_out=64)
-        self.DCT1 = DCTBlock(64)
-        self.Conv2 = conv_block(ch_in=64, ch_out=128)
+        self.Conv1 = conv_block(img_ch, 64)
+        self.Conv2 = conv_block(64, 128)
         self.DCT2 = DCTBlock(128)
-        self.Conv3 = conv_block(ch_in=128, ch_out=256)
-        self.DCT3 = DCTBlock(256)
-        self.Conv4 = conv_block(ch_in=256, ch_out=512)
+        self.Conv3 = conv_block(128, 256)
+        self.Conv4 = conv_block(256, 512)
         self.DCT4 = DCTBlock(512)
-        self.Conv5 = conv_block(ch_in=512, ch_out=1024)
-        self.DCT5 = DCTBlock(1024)
+        self.Conv5 = conv_block(512, 1024)
 
-        self.Up5 = up_conv(ch_in=1024, ch_out=512)
-        self.Up_conv5 = conv_block(ch_in=1024, ch_out=512)
-        self.DCTu5 = DCTBlock(512)
-
-        self.Up4 = up_conv(ch_in=512, ch_out=256)
-        self.Up_conv4 = conv_block(ch_in=512, ch_out=256)
-        self.DCTu4 = DCTBlock(256)
-
-        self.Up3 = up_conv(ch_in=256, ch_out=128)
-        self.Up_conv3 = conv_block(ch_in=256, ch_out=128)
-        self.DCTu3 = DCTBlock(128)
-
-        self.Up2 = up_conv(ch_in=128, ch_out=64)
-        self.Up_conv2 = conv_block(ch_in=128, ch_out=64)
-        self.DCTu2 = DCTBlock(64)
-
+        self.Up5 = up_conv(1024, 512)
+        self.Up_conv5 = conv_block(1024, 512)
+        self.Up4 = up_conv(512, 256)
+        self.Up_conv4 = conv_block(512, 256)
+        self.Up3 = up_conv(256, 128)
+        self.Up_conv3 = conv_block(256 + 128, 128)  # Receives DCT skip
+        self.Up2 = up_conv(128, 64)
+        self.Up_conv2 = conv_block(128, 64)
         self.Conv_1x1 = nn.Conv2d(64, output_ch, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
-        # Encoder
         x1 = self.Conv1(x)
-        x1 = self.DCT1(x1)
         x2 = self.Maxpool(x1)
         x2 = self.Conv2(x2)
-        x2 = self.DCT2(x2)
-        x3 = self.Maxpool(x2)
+        x2_dct = self.DCT2(x2)
+        x3 = self.Maxpool(x2_dct)
         x3 = self.Conv3(x3)
-        x3 = self.DCT3(x3)
         x4 = self.Maxpool(x3)
         x4 = self.Conv4(x4)
-        x4 = self.DCT4(x4)
-        x5 = self.Maxpool(x4)
+        x4_dct = self.DCT4(x4)
+        x5 = self.Maxpool(x4_dct)
         x5 = self.Conv5(x5)
-        x5 = self.DCT5(x5)
 
-        # Decoder
         d5 = self.Up5(x5)
-        d5 = torch.cat((x4, d5), dim=1)
+        d5 = torch.cat((x4_dct, d5), dim=1)
         d5 = self.Up_conv5(d5)
-        d5 = self.DCTu5(d5)
         d4 = self.Up4(d5)
         d4 = torch.cat((x3, d4), dim=1)
         d4 = self.Up_conv4(d4)
-        d4 = self.DCTu4(d4)
         d3 = self.Up3(d4)
-        d3 = torch.cat((x2, d3), dim=1)
+        d3 = torch.cat((x2_dct, d3), dim=1)
         d3 = self.Up_conv3(d3)
-        d3 = self.DCTu3(d3)
         d2 = self.Up2(d3)
         d2 = torch.cat((x1, d2), dim=1)
         d2 = self.Up_conv2(d2)
-        d2 = self.DCTu2(d2)
         d1 = self.Conv_1x1(d2)
         return torch.sigmoid(d1)
 
